@@ -25,6 +25,8 @@ A Blender to [Nori](https://github.com/wjakob/nori) export plugin. Inspired by [
 
 To export a scene as a Nori XML, go to `File > Export > Nori (.xml)`. Choose a path and filename, and adjust the export settings as needed.
 
+![](export_settings.png)
+
 ## Limitations
 
 ### Shaders
