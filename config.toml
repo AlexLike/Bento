@@ -1,0 +1,22 @@
+[node_tag_map]
+BSDF_DIFFUSE = "bsdf"
+BSDF_GLOSSY = "bsdf"
+EMISSION = "emitter"
+TEX_CHECKER = "texture"
+
+[node_map]
+BSDF_DIFFUSE = "diffuse"
+BSDF_GLOSSY = "microfacet"
+EMISSION = "area"
+TEX_CHECKER = "checkerboard_color"
+
+[parameter_map]
+BSDF_DIFFUSE.Color = "albedo"
+BSDF_GLOSSY.Color = "kd"
+BSDF_GLOSSY.Roughness = "alpha"
+TEX_CHECKER.Color1 = "value1"
+TEX_CHECKER.Color2 = "value2"
+
+[type_map]
+RGBA = "color"
+VALUE = "float"
