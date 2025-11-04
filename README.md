@@ -87,3 +87,8 @@ Complete example (Diffuse shader):
 
 > [!NOTE]
 > Many parameters cannot be mapped one-to-one due to differences in how Blender and Nori handle certain concepts. For example, Blender's Glossy shader has a "Roughness" parameter, while Nori's Microfacet shader uses "alpha" (roughness squared). Conversions like this need to be implemented directly in the code (roughness to alpha conversion is already implemented).
+
+## TODO
+- Dielectric shader
+- Checker texture scaling
+- Safety checks (e.g. ensure user is in object mode before exporting)
