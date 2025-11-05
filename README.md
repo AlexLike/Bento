@@ -12,7 +12,7 @@ A Blender to [Nori](https://github.com/wjakob/nori) export plugin. Inspired by [
 - Option to export all referenced image textures as PNG or JPEG
 - Simple settings for resolution, SPP, integrator, reconstruction filter, etc.
 - Easily extensible for other simple nodes/shaders
-- Export point lights
+- Exports point lights
 
 ## Installation
 
