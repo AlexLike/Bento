@@ -75,7 +75,7 @@ The config file consists of four mappings used to translate Blender concepts to 
     - `EMISSION` -> `area`
 - `parameter_map`: Maps Blender shader node parameters to Nori **parameter names**. Examples:
     - `BSDF_DIFFUSE.Color` -> `albedo`
-    - `BSDF_GLASS.IOR` -> `value1`
+    - `BSDF_GLASS.IOR` -> `intIOR`
 - `type_map`: Maps Blender shader node parameter types to Nori **parameter tags**. Examples:
     - `RGBA` -> `color`
     - `VALUE` -> `float`
