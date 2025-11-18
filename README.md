@@ -56,6 +56,11 @@ There is limited support for checkerboard textures.
 > [!TIP]
 > The script automatically generates a relative path to each texture (see the `handle_special_cases` function in `export_materials.py`). If you implement image textures in Nori, you can use that path to load the texture.
 
+### Meshes
+
+> [!IMPORTANT]
+> Currently, normals are exported per face vertex (i.e. flat shading). Smooth shading is not supported yet.
+
 ## Extending Shader Support
 
 > [!TIP]
