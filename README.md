@@ -59,7 +59,7 @@ There is limited support for checkerboard textures.
 ### Meshes
 
 > [!IMPORTANT]
-> Currently, normals are exported per face vertex (i.e. flat shading). Smooth shading is not supported yet.
+> Currently, normals are exported per face (i.e. flat shading). Smooth shading is not supported yet.
 
 ## Extending Shader Support
 
