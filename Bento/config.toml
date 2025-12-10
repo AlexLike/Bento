@@ -2,6 +2,7 @@
 BSDF_DIFFUSE = "bsdf"
 BSDF_GLOSSY = "bsdf"
 BSDF_GLASS = "bsdf"
+BSDF_PRINCIPLED = "bsdf"
 EMISSION = "emitter"
 TEX_CHECKER = "texture"
 
@@ -9,6 +10,7 @@ TEX_CHECKER = "texture"
 BSDF_DIFFUSE = "diffuse"
 BSDF_GLOSSY = "microfacet"
 BSDF_GLASS = "dielectric"
+BSDF_PRINCIPLED = "disney"
 EMISSION = "area"
 TEX_CHECKER = "checkerboard_color"
 

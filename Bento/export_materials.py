@@ -119,6 +119,122 @@ def handle_special_cases(node, node_tag, texture_dir, export_settings):
             )
             return node_tag
 
+        case "BSDF_PRINCIPLED":
+            # Export Principled BSDF as Disney BSDF
+            # Base Color
+            base_color = node.inputs.get("Base Color")
+            if base_color and len(base_color.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "color",
+                    name="baseColor",
+                    value=convert_values(base_color.default_value, "color"),
+                )
+
+            # Subsurface → Subsurface Weight
+            subsurface = node.inputs.get("Subsurface Weight")
+            if not subsurface:  # Fallback for older Blender versions
+                subsurface = node.inputs.get("Subsurface")
+            if subsurface and len(subsurface.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="subsurface",
+                    value=convert_values(subsurface.default_value, "float"),
+                )
+
+            # Metallic
+            metallic = node.inputs.get("Metallic")
+            if metallic and len(metallic.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="metallic",
+                    value=convert_values(metallic.default_value, "float"),
+                )
+
+            # Specular IOR Level → Specular
+            specular = node.inputs.get("Specular IOR Level")
+            if not specular:  # Fallback for older Blender versions
+                specular = node.inputs.get("Specular")
+            if specular and len(specular.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="specular",
+                    value=convert_values(specular.default_value, "float"),
+                )
+
+            # Specular Tint
+            specular_tint = node.inputs.get("Specular Tint")
+            if specular_tint and len(specular_tint.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="specularTint",
+                    value=convert_values(specular_tint.default_value, "float"),
+                )
+
+            # Roughness
+            roughness = node.inputs.get("Roughness")
+            if roughness and len(roughness.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="roughness",
+                    value=convert_values(roughness.default_value, "float"),
+                )
+
+            # Sheen Weight → Sheen
+            sheen = node.inputs.get("Sheen Weight")
+            if not sheen:  # Fallback for older Blender versions
+                sheen = node.inputs.get("Sheen")
+            if sheen and len(sheen.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="sheen",
+                    value=convert_values(sheen.default_value, "float"),
+                )
+
+            # Sheen Tint
+            sheen_tint = node.inputs.get("Sheen Tint")
+            if sheen_tint and len(sheen_tint.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="sheenTint",
+                    value=convert_values(sheen_tint.default_value, "float"),
+                )
+
+            # Coat Weight → Clearcoat
+            coat = node.inputs.get("Coat Weight")
+            if not coat:  # Fallback for older Blender versions
+                coat = node.inputs.get("Clearcoat")
+            if coat and len(coat.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="clearcoat",
+                    value=convert_values(coat.default_value, "float"),
+                )
+
+            # Coat Roughness → Clearcoat Gloss (INVERTED!)
+            coat_roughness = node.inputs.get("Coat Roughness")
+            if not coat_roughness:  # Fallback for older Blender versions
+                coat_roughness = node.inputs.get("Clearcoat Roughness")
+            if coat_roughness and len(coat_roughness.links) == 0:
+                # Invert: clearcoatGloss = 1.0 - coat_roughness
+                clearcoat_gloss = 1.0 - coat_roughness.default_value
+                ET.SubElement(
+                    node_tag,
+                    "float",
+                    name="clearcoatGloss",
+                    value=convert_values(clearcoat_gloss, "float"),
+                )
+
+            return node_tag
+
         case "BSDF_GLOSSY":
             roughness = node.inputs.get("Roughness").default_value
             alpha = roughness**2
