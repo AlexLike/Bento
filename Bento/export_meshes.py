@@ -1,9 +1,47 @@
 import bpy
 import bmesh
 import os
+import math
+from typing import Optional, Tuple, List
+from mathutils import Vector
 
 
-def export_meshes(context, directory):
+def is_sphere(mesh, tolerance=0.01) -> Tuple[bool, Optional[Vector], Optional[float]]:
+    """Detect if a mesh is a sphere by checking if all vertices are equidistant from center."""
+    if len(mesh.vertices) < 8:
+        return False, None, None
+
+    # Calculate center as average of all vertices
+    center = sum(
+        (v.co for v in mesh.vertices), start=mesh.vertices[0].co.copy() * 0
+    ) / len(mesh.vertices)
+
+    # Calculate distances from center
+    distances = [(v.co - center).length for v in mesh.vertices]
+
+    if not distances:
+        return False, None, None
+
+    avg_radius = sum(distances) / len(distances)
+
+    # Check if all distances are within tolerance
+    for dist in distances:
+        if abs(dist - avg_radius) > tolerance:
+            return False, None, None
+
+    return True, center, avg_radius
+
+
+def export_meshes(context, directory) -> List[
+    Tuple[
+        Optional[str],
+        Optional[str],
+        Optional[str],
+        bool,
+        Optional[Vector],
+        Optional[float],
+    ]
+]:
     meshes_dir = os.path.join(directory, "meshes")
     os.makedirs(meshes_dir, exist_ok=True)
 
@@ -17,17 +55,34 @@ def export_meshes(context, directory):
         mesh = eval_obj.to_mesh()
         mesh.transform(obj.matrix_world)
 
+        # Check if this is a sphere
+        is_spherical, center, radius = is_sphere(mesh)
+
         materials = mesh.materials
 
         if not materials:
-            obj_name, filepath, material = export_submesh(mesh, obj.name, directory)
-            mesh_data.append((obj_name, filepath, material))
+            if is_spherical:
+                mesh_data.append((obj.name, None, None, True, center, radius))
+            else:
+                obj_name, filepath, material, is_sphere_result, center, radius = (
+                    export_submesh(mesh, obj.name, directory)
+                )
+                mesh_data.append(
+                    (obj_name, filepath, material, is_sphere_result, center, radius)
+                )
         else:
             for i, mat in enumerate(materials):
-                obj_name, filepath, material = export_material_submesh(
-                    mesh, obj.name, mat, i, directory
-                )
-                mesh_data.append((obj_name, filepath, material))
+                if is_spherical:
+                    mesh_data.append(
+                        (f"{obj.name}_{mat.name}", None, mat.name, True, center, radius)
+                    )
+                else:
+                    obj_name, filepath, material, is_sphere_result, center, radius = (
+                        export_material_submesh(mesh, obj.name, mat, i, directory)
+                    )
+                    mesh_data.append(
+                        (obj_name, filepath, material, is_sphere_result, center, radius)
+                    )
 
         eval_obj.to_mesh_clear()
         print(mesh_data)
@@ -35,7 +90,11 @@ def export_meshes(context, directory):
     return mesh_data
 
 
-def export_material_submesh(mesh, obj_name, material, mat_index, directory):
+def export_material_submesh(
+    mesh, obj_name, material, mat_index, directory
+) -> Tuple[
+    Optional[str], Optional[str], Optional[str], bool, Optional[Vector], Optional[float]
+]:
     """Export only the faces with the given material index, preserving UVs."""
     bm = bmesh.new()
     bm.from_mesh(mesh)
@@ -44,7 +103,7 @@ def export_material_submesh(mesh, obj_name, material, mat_index, directory):
     faces = [f for f in bm.faces if f.material_index == mat_index]
     if not faces:
         bm.free()
-        return
+        return None, None, None, False, None, None
 
     # Create a new bmesh for the submesh
     sub_bm = bmesh.new()
@@ -107,10 +166,15 @@ def export_material_submesh(mesh, obj_name, material, mat_index, directory):
         f"{obj_name}_{material.name}",
         f"{obj_name}_{material.name}.obj",
         material.name,
+        False,
+        None,
+        None,
     )
 
 
-def export_submesh(mesh, obj_name, directory):
+def export_submesh(
+    mesh, obj_name, directory
+) -> Tuple[str, str, None, bool, None, None]:
     """Export mesh without material"""
     mesh_copy = mesh.copy()
     temp_obj = bpy.data.objects.new(obj_name, mesh_copy)
@@ -127,4 +191,4 @@ def export_submesh(mesh, obj_name, directory):
     bpy.data.objects.remove(temp_obj, do_unlink=True)
     bpy.data.meshes.remove(mesh_copy, do_unlink=True)
 
-    return obj_name, f"{obj_name}.obj", None
+    return obj_name, f"{obj_name}.obj", None, False, None, None

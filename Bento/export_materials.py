@@ -70,7 +70,11 @@ def convert_values(value, param_type):
     if param_type == "color":
         return ",".join([str(round(v, 4)) for i, v in enumerate(value) if i < 3])
     elif param_type == "float":
-        return str(round(value, 4))
+        # Handle both single floats and array-like objects (e.g., bpy_prop_array)
+        if hasattr(value, "__iter__") and not isinstance(value, str):
+            # If it's an iterable (but not a string), take the first element
+            return str(round(float(value[0]), 4))
+        return str(round(float(value), 4))
 
     return str(value)
 

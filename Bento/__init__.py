@@ -225,17 +225,43 @@ class EXPORT_OT_nori(bpy.types.Operator, ExportHelper):
         camera_tag = create_camera_tag(camera, root, self.export_settings)
 
         # Create XML tags for each mesh
-        for _, filepath, material in mesh_data:
-            if material is None:
+        for mesh_info in mesh_data:
+            obj_name, filepath, material, is_sphere, center, radius = mesh_info
+
+            # Skip empty submeshes or meshes without material
+            if obj_name is None or material is None:
                 # TODO: Assign a default material (diffuse)
                 continue
 
             mat_xml = materials.get(material)
-            mesh_xml = ET.SubElement(root, "mesh", type="obj")
-            ET.SubElement(
-                mesh_xml, "string", name="filename", value=f"meshes/{filepath}"
-            )
-            mesh_xml.append(mat_xml)
+            if mat_xml is None:
+                print(f"Warning: Material '{material}' not found in exported materials")
+                continue
+
+            if is_sphere:
+                # Export as analytical sphere
+                if center is None or radius is None:
+                    print(f"Warning: Sphere mesh '{obj_name}' has invalid geometry")
+                    continue
+                mesh_xml = ET.SubElement(root, "mesh", type="sphere")
+                ET.SubElement(
+                    mesh_xml,
+                    "point",
+                    name="center",
+                    value=f"{center[0]:.5f},{center[1]:.5f},{center[2]:.5f}",
+                )
+                ET.SubElement(mesh_xml, "float", name="radius", value=f"{radius:.5f}")
+                mesh_xml.append(mat_xml)
+            else:
+                # Export as OBJ mesh
+                if filepath is None:
+                    print(f"Warning: Mesh '{obj_name}' has no filepath")
+                    continue
+                mesh_xml = ET.SubElement(root, "mesh", type="obj")
+                ET.SubElement(
+                    mesh_xml, "string", name="filename", value=f"meshes/{filepath}"
+                )
+                mesh_xml.append(mat_xml)
 
         # Export point lights
         if self.export_settings.export_pointlights:
