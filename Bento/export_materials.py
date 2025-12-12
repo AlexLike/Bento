@@ -170,13 +170,31 @@ def handle_special_cases(node, node_tag, texture_dir, export_settings):
                 )
 
             # Specular Tint
+            # In Blender: RGB color (absolute)
+            # In Nori: float where (1-noriTint)*white + noriTint*baseColor = blenderTint
             specular_tint = node.inputs.get("Specular Tint")
             if specular_tint and len(specular_tint.links) == 0:
+                base_color_value = (
+                    base_color.default_value[:3] if base_color else [0.5, 0.5, 0.5]
+                )
+                tint_color = specular_tint.default_value[:3]
+
+                # Calculate per-channel and average
+                tint_values = []
+                for i in range(3):
+                    denominator = base_color_value[i] - 1.0
+                    if abs(denominator) > 0.0001:
+                        t = (tint_color[i] - 1.0) / denominator
+                        tint_values.append(max(0.0, min(1.0, t)))  # Clamp to [0,1]
+                    else:
+                        tint_values.append(0.0 if tint_color[i] >= 0.9999 else 1.0)
+
+                tint_value = sum(tint_values) / 3.0
                 ET.SubElement(
                     node_tag,
                     "float",
                     name="specularTint",
-                    value=convert_values(specular_tint.default_value, "float"),
+                    value=convert_values(tint_value, "float"),
                 )
 
             # Roughness
@@ -202,13 +220,31 @@ def handle_special_cases(node, node_tag, texture_dir, export_settings):
                 )
 
             # Sheen Tint
+            # In Blender: RGB color (absolute)
+            # In Nori: float where (1-noriTint)*white + noriTint*baseColor = blenderTint
             sheen_tint = node.inputs.get("Sheen Tint")
             if sheen_tint and len(sheen_tint.links) == 0:
+                base_color_value = (
+                    base_color.default_value[:3] if base_color else [0.5, 0.5, 0.5]
+                )
+                tint_color = sheen_tint.default_value[:3]
+
+                # Calculate per-channel and average
+                tint_values = []
+                for i in range(3):
+                    denominator = base_color_value[i] - 1.0
+                    if abs(denominator) > 0.0001:
+                        t = (tint_color[i] - 1.0) / denominator
+                        tint_values.append(max(0.0, min(1.0, t)))  # Clamp to [0,1]
+                    else:
+                        tint_values.append(0.0 if tint_color[i] >= 0.9999 else 1.0)
+
+                tint_value = sum(tint_values) / 3.0
                 ET.SubElement(
                     node_tag,
                     "float",
                     name="sheenTint",
-                    value=convert_values(sheen_tint.default_value, "float"),
+                    value=convert_values(tint_value, "float"),
                 )
 
             # Coat Weight → Clearcoat
