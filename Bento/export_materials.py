@@ -272,6 +272,13 @@ def export_texture(node, texture_dir, export_settings):
     if not img:
         return
 
+    # Check if the image has valid data
+    if not img.has_data:
+        print(
+            f"Warning: Image '{img.name}' does not have any image data. Skipping export."
+        )
+        return None
+
     img_name = os.path.splitext(img.name)[0]
     file_ext = export_settings.texture_format.lower()
     out_path = os.path.join(texture_dir, img_name + f".{file_ext}")
@@ -282,6 +289,10 @@ def export_texture(node, texture_dir, export_settings):
     try:
         # `save()` works for both packed and external images
         img.save(filepath=out_path)
+    except RuntimeError as e:
+        print(f"Warning: Failed to export texture '{img.name}': {e}")
+        img.file_format = original_format
+        return None
     finally:
         # --- Restore original format ---
         img.file_format = original_format
@@ -292,7 +303,17 @@ def export_texture(node, texture_dir, export_settings):
 
 def export_materials(config, texture_dir, export_settings):
     materials = {}
+    # Only export materials that are used by objects visible to camera
+    visible_materials = set()
+    for obj in bpy.data.objects:
+        if obj.type in ("MESH", "CURVES") and not obj.hide_render:
+            for mat_slot in obj.material_slots:
+                if mat_slot.material:
+                    visible_materials.add(mat_slot.material.name)
+
     for mat in bpy.data.materials:
+        if mat.name not in visible_materials:
+            continue
         xml = traverse_material_nodes(mat, config, texture_dir, export_settings)
         if xml is not None:
             materials[mat.name] = xml

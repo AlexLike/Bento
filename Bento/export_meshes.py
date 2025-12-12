@@ -51,6 +51,10 @@ def export_meshes(context, directory) -> List[
         if obj.type != "MESH":
             continue
 
+        # Skip objects not visible to camera in the outliner
+        if obj.hide_render:
+            continue
+
         eval_obj = obj.evaluated_get(depsgraph)
         mesh = eval_obj.to_mesh()
         mesh.transform(obj.matrix_world)

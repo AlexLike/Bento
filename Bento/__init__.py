@@ -16,6 +16,7 @@ import xml.dom.minidom as minidom
 
 from Bento.export_materials import load_config, export_materials, convert_values
 from Bento.export_meshes import export_meshes
+from Bento.export_curves import export_curves
 
 
 def update_sample_count(self, context):
@@ -211,6 +212,9 @@ class EXPORT_OT_nori(bpy.types.Operator, ExportHelper):
         export_directory = os.path.dirname(self.filepath)
         mesh_data = export_meshes(context, export_directory)
 
+        # Export curves
+        curve_data = export_curves(context, export_directory)
+
         # Build XML
         root = ET.Element("scene")
         ET.SubElement(root, "integrator", type=self.export_settings.integrator)
@@ -262,6 +266,33 @@ class EXPORT_OT_nori(bpy.types.Operator, ExportHelper):
                     mesh_xml, "string", name="filename", value=f"meshes/{filepath}"
                 )
                 mesh_xml.append(mat_xml)
+
+        # Create XML tags for each curve
+        for curve_info in curve_data:
+            obj_name, filepath, material = curve_info
+
+            # Skip curves without material
+            if material is None:
+                # TODO: Assign a default material (diffuse)
+                continue
+
+            mat_xml = materials.get(material)
+            if mat_xml is None:
+                print(
+                    f"Warning: Material '{material}' not found for curve '{obj_name}'"
+                )
+                continue
+
+            # Export as hair shape
+            if filepath is None:
+                print(f"Warning: Curve '{obj_name}' has no filepath")
+                continue
+
+            curve_xml = ET.SubElement(root, "mesh", type="hair")
+            ET.SubElement(
+                curve_xml, "string", name="filename", value=f"curves/{filepath}"
+            )
+            curve_xml.append(mat_xml)
 
         # Export point lights
         if self.export_settings.export_pointlights:
