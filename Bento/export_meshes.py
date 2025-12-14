@@ -6,9 +6,9 @@ from typing import Optional, Tuple, List
 from mathutils import Vector
 
 
-def is_sphere(mesh, tolerance=0.01) -> Tuple[bool, Optional[Vector], Optional[float]]:
+def is_sphere(mesh, tolerance=0.001) -> Tuple[bool, Optional[Vector], Optional[float]]:
     """Detect if a mesh is a sphere by checking if all vertices are equidistant from center."""
-    if len(mesh.vertices) < 8:
+    if len(mesh.vertices) < 20:
         return False, None, None
 
     # Calculate center as average of all vertices
@@ -28,6 +28,34 @@ def is_sphere(mesh, tolerance=0.01) -> Tuple[bool, Optional[Vector], Optional[fl
     for dist in distances:
         if abs(dist - avg_radius) > tolerance:
             return False, None, None
+
+    # Additional check: bounding box should be roughly cubic
+    bbox_min = Vector(
+        (
+            min(v.co.x for v in mesh.vertices),
+            min(v.co.y for v in mesh.vertices),
+            min(v.co.z for v in mesh.vertices),
+        )
+    )
+    bbox_max = Vector(
+        (
+            max(v.co.x for v in mesh.vertices),
+            max(v.co.y for v in mesh.vertices),
+            max(v.co.z for v in mesh.vertices),
+        )
+    )
+    size = bbox_max - bbox_min
+
+    # Check aspect ratios: all dimensions should be similar
+    max_size = max(size)
+    min_size = min(size)
+    if max_size / min_size > 1.2:  # Allow up to 20% deviation from cubic
+        return False, None, None
+
+    # Check if diameter matches radius
+    diameter = max_size
+    if abs(diameter - 2 * avg_radius) > tolerance * avg_radius * 2:
+        return False, None, None
 
     return True, center, avg_radius
 
