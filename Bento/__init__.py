@@ -10,6 +10,7 @@ bl_info = {
 
 import bpy
 import os
+import math
 from bpy_extras.io_utils import ExportHelper
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
@@ -329,12 +330,8 @@ class EXPORT_OT_nori(bpy.types.Operator, ExportHelper):
 
 def create_camera_tag(camera, root, export_settings):
     camera_tag = ET.SubElement(root, "camera", type="perspective")
-    ET.SubElement(
-        camera_tag,
-        "float",
-        name="fov",
-        value=str(camera.data.angle * (180.0 / 3.14159265)),
-    )
+
+    # Width and height in pixels
     ET.SubElement(
         camera_tag,
         "integer",
@@ -347,6 +344,27 @@ def create_camera_tag(camera, root, export_settings):
         name="height",
         value=str(export_settings.resolution_y),
     )
+
+    # Horizontal field of view in degrees
+    fov_rad = camera.data.angle
+    aspect = export_settings.resolution_x / export_settings.resolution_y
+    # Convert to horizontal FOV if camera is in vertical mode
+    if camera.data.sensor_fit == "VERTICAL":
+        # Convert vertical FOV to horizontal FOV
+        fov_rad = 2.0 * math.atan(math.tan(fov_rad / 2.0) * aspect)
+    elif camera.data.sensor_fit == "AUTO":
+        # Auto mode uses the larger dimension
+        if aspect < 1.0:  # Height > Width, so stored FOV is vertical
+            fov_rad = 2.0 * math.atan(math.tan(fov_rad / 2.0) * aspect)
+    fov_deg = fov_rad * (180.0 / math.pi)
+    ET.SubElement(
+        camera_tag,
+        "float",
+        name="fov",
+        value=str(fov_deg),
+    )
+
+    # Camera-to-world transformation
     transform = ET.SubElement(
         camera_tag,
         "transform",
@@ -362,6 +380,8 @@ def create_camera_tag(camera, root, export_settings):
         "matrix",
         value=" ".join([str(round(v, 6)) for row in camera.matrix_world for v in row]),
     )
+
+    # Reconstruction filter
     ET.SubElement(
         camera_tag,
         "rfilter",
