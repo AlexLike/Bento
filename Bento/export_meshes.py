@@ -64,7 +64,7 @@ def export_meshes(context, directory) -> List[
 
         materials = mesh.materials
 
-        if not materials:
+        if not materials or all(m is None for m in materials):
             if is_spherical:
                 mesh_data.append((obj.name, None, None, True, center, radius))
             else:
@@ -75,18 +75,31 @@ def export_meshes(context, directory) -> List[
                     (obj_name, filepath, material, is_sphere_result, center, radius)
                 )
         else:
-            for i, mat in enumerate(materials):
-                if is_spherical:
-                    mesh_data.append(
-                        (f"{obj.name}_{mat.name}", None, mat.name, True, center, radius)
-                    )
-                else:
-                    obj_name, filepath, material, is_sphere_result, center, radius = (
-                        export_material_submesh(mesh, obj.name, mat, i, directory)
-                    )
-                    mesh_data.append(
-                        (obj_name, filepath, material, is_sphere_result, center, radius)
-                    )
+            # Find the first non-None material and its index
+            first_mat = None
+            first_mat_index = None
+            for i, m in enumerate(materials):
+                if m is not None:
+                    first_mat = m
+                    first_mat_index = i
+                    break
+            if len([m for m in materials if m is not None]) > 1:
+                print(
+                    f"Warning: Object '{obj.name}' has multiple materials. Only exporting the first material '{first_mat.name}'."
+                )
+            mat = first_mat
+            mat_index = first_mat_index
+            if is_spherical:
+                mesh_data.append(
+                    (f"{obj.name}_{mat.name}", None, mat.name, True, center, radius)
+                )
+            else:
+                obj_name, filepath, material, is_sphere_result, center, radius = (
+                    export_material_submesh(mesh, obj.name, mat, mat_index, directory)
+                )
+                mesh_data.append(
+                    (obj_name, filepath, material, is_sphere_result, center, radius)
+                )
 
         eval_obj.to_mesh_clear()
         print(mesh_data)
@@ -130,9 +143,10 @@ def export_material_submesh(
     for face in faces:
         new_verts = [vert_map[v] for v in face.verts]
         new_face = sub_bm.faces.new(new_verts)
+        new_face.smooth = face.smooth
 
-        if sub_uv_layer:
-            for loop_old, loop_new in zip(face.loops, new_face.loops):
+        for loop_old, loop_new in zip(face.loops, new_face.loops):
+            if sub_uv_layer:
                 loop_new[sub_uv_layer].uv = loop_old[uv_layer].uv
 
     # Update mesh and export
@@ -157,6 +171,7 @@ def export_material_submesh(
         export_selected_objects=True,
         export_materials=False,
         export_uv=True,
+        export_normals=True,
         forward_axis="Y",
         up_axis="Z",
     )
@@ -190,6 +205,9 @@ def export_submesh(
         export_selected_objects=True,
         export_materials=True,
         export_uv=True,
+        export_normals=True,
+        forward_axis="Y",
+        up_axis="Z",
     )
 
     bpy.data.objects.remove(temp_obj, do_unlink=True)

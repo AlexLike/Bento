@@ -21,17 +21,27 @@ def load_config(prefs):
 
 def traverse_material_nodes(material, config, texture_dir, export_settings):
     if not material.use_nodes:
+        print(f"Warning: Material '{material.name}' does not use nodes. Skipping.")
         return
 
     node_tree = material.node_tree
 
     output_nodes = [n for n in node_tree.nodes if n.type == "OUTPUT_MATERIAL"]
     if not output_nodes:
-        print(f"Material '{material.name}' has no Material Output node.")
+        print(
+            f"Warning: Material '{material.name}' has no Material Output node. Skipping."
+        )
         return
 
     output_node = output_nodes[0]
-    shader_node = output_node.inputs["Surface"].links[0].from_node
+    surface_input = output_node.inputs.get("Surface")
+    if not surface_input or not surface_input.links:
+        print(
+            f"Warning: Material '{material.name}' has no surface shader connected. Skipping."
+        )
+        return
+
+    shader_node = surface_input.links[0].from_node
 
     visited = set()
 
@@ -85,6 +95,9 @@ def node_to_xml(node, config, texture_dir, export_settings):
     node_type = node_map.get(node.type)
     export_img = node.type == "TEX_IMAGE" and export_settings.export_textures
     if not node_type and not export_img:
+        print(
+            f"Warning: Unsupported node type '{node.type}' in material. Skipping this node."
+        )
         return None
 
     node_tag = ET.Element(node_tag_map.get(node.type), type=node_type)
@@ -311,7 +324,9 @@ def handle_special_cases(node, node_tag, texture_dir, export_settings):
             img_path = export_texture(node, texture_dir, export_settings)
             if img_path:
                 ET.SubElement(node_tag, "string", name="filename", value=img_path)
-            return node_tag
+                return node_tag
+            else:
+                return None
 
         case _:
             return None
@@ -325,6 +340,10 @@ def export_texture(node, texture_dir, export_settings):
 
     if not img:
         return
+
+    if not img.name:
+        print(f"Warning: Texture node has no image name. Skipping export.")
+        return None
 
     # Check if the image has valid data
     if not img.has_data:
@@ -383,5 +402,9 @@ def export_materials(config, texture_dir, export_settings):
         xml = traverse_material_nodes(mat, config, texture_dir, export_settings)
         if xml is not None:
             materials[mat.name] = xml
+        else:
+            print(
+                f"Warning: Failed to export material '{mat.name}' due to unsupported or invalid node graph."
+            )
 
     return materials
