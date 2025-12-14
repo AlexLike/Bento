@@ -111,6 +111,12 @@ class ExportSettings(bpy.types.PropertyGroup):
         default=False,
     )
 
+    export_environment_map: bpy.props.BoolProperty(
+        name="Export Environment Map",
+        description="Export environment map as emitter",
+        default=False,
+    )
+
     reconstruction_filter: bpy.props.EnumProperty(
         name="Reconstruction Filter",
         items=[
@@ -181,6 +187,9 @@ class EXPORT_OT_nori(bpy.types.Operator, ExportHelper):
 
         # Point Lights
         layout.prop(self.export_settings, "export_pointlights", icon="LIGHT")
+
+        # Environment Map
+        layout.prop(self.export_settings, "export_environment_map", icon="WORLD")
 
         # Reconstruction Filter
         layout.prop(self.export_settings, "reconstruction_filter", icon="SMOOTHCURVE")
@@ -317,6 +326,12 @@ class EXPORT_OT_nori(bpy.types.Operator, ExportHelper):
                         value=convert_values(radiance, "color"),
                     )
 
+        # Export environment map
+        if self.export_settings.export_environment_map:
+            env_emitter = export_environment(texture_dir, self.export_settings)
+            if env_emitter:
+                root.append(env_emitter)
+
         tree = ET.ElementTree(root)
         tree.write(self.filepath, encoding="utf-8", xml_declaration=True)
         print(f"Exported scene to {self.filepath}")
@@ -388,6 +403,73 @@ def create_camera_tag(camera, root, export_settings):
         type=export_settings.reconstruction_filter,
     )
     return camera_tag
+
+
+def export_environment(texture_dir, export_settings):
+    world = bpy.context.scene.world
+    if not world or not world.use_nodes:
+        return None
+
+    node_tree = world.node_tree
+    background_nodes = [n for n in node_tree.nodes if n.type == "BACKGROUND"]
+    if not background_nodes:
+        return None
+
+    bg_node = background_nodes[0]
+    color_input = bg_node.inputs.get("Color")
+    if not color_input or not color_input.links:
+        return None
+
+    tex_node = color_input.links[0].from_node
+    if tex_node.type not in ("TEX_IMAGE", "TEX_ENVIRONMENT"):
+        return None
+
+    img = tex_node.image
+    if not img or not img.has_data:
+        return None
+
+    # Flip the image horizontally, then shift by 180 degrees
+    width, height = img.size
+    original_pixels = list(img.pixels)
+    flipped_pixels = []
+    for y in range(height):
+        for x in range(width):
+            src_x = width - 1 - x
+            src_index = (y * width + src_x) * 4
+            flipped_pixels.extend(original_pixels[src_index : src_index + 4])
+
+    shifted_pixels = []
+    half_width = width // 2
+    for y in range(height):
+        for x in range(width):
+            src_x = (x + half_width) % width
+            src_index = (y * width + src_x) * 4
+            shifted_pixels.extend(flipped_pixels[src_index : src_index + 4])
+    img.pixels[:] = shifted_pixels
+
+    img_name = os.path.splitext(img.name)[0]
+    out_path = os.path.join(texture_dir, img_name + ".exr")
+
+    original_format = img.file_format
+    img.file_format = "OPEN_EXR"
+    try:
+        img.save(filepath=out_path)
+    except RuntimeError as e:
+        print(f"Warning: Failed to export environment texture '{img.name}': {e}")
+        img.file_format = original_format
+        return None
+    finally:
+        img.file_format = original_format
+        img.pixels[:] = original_pixels
+
+    print(f"Exported environment texture to: {out_path}")
+
+    # Create emitter tag
+    emitter_tag = ET.Element("emitter", type="environmentmap")
+    ET.SubElement(
+        emitter_tag, "string", name="filename", value=f"textures/{img_name}.exr"
+    )
+    return emitter_tag
 
 
 def menu_func_export(self, context):
