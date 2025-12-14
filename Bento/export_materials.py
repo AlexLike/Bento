@@ -315,6 +315,17 @@ def export_texture(node, texture_dir, export_settings):
         )
         return None
 
+    # Flip the image vertically to match Nori and PBRT v-coordinate convention
+    width, height = img.size
+    original_pixels = list(img.pixels)
+    flipped_pixels = []
+    for y in range(height):
+        src_y = height - 1 - y
+        for x in range(width):
+            src_index = (src_y * width + x) * 4
+            flipped_pixels.extend(original_pixels[src_index : src_index + 4])
+    img.pixels[:] = flipped_pixels
+
     img_name = os.path.splitext(img.name)[0]
     file_ext = export_settings.texture_format.lower()
     out_path = os.path.join(texture_dir, img_name + f".{file_ext}")
@@ -330,8 +341,9 @@ def export_texture(node, texture_dir, export_settings):
         img.file_format = original_format
         return None
     finally:
-        # --- Restore original format ---
+        # --- Restore original format and pixels ---
         img.file_format = original_format
+        img.pixels[:] = original_pixels
 
     print(f"Exported texture to: {out_path}")
     return f"textures/{img_name}.{file_ext}"
