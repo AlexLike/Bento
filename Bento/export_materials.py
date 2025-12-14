@@ -275,6 +275,17 @@ def handle_special_cases(node, node_tag, texture_dir, export_settings):
 
             return node_tag
 
+        case "BSDF_DIFFUSE":
+            color = node.inputs.get("Color")
+            if color and len(color.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "color",
+                    name="albedo",
+                    value=convert_values(color.default_value, "color"),
+                )
+            return node_tag
+
         case "BSDF_GLOSSY":
             roughness = node.inputs.get("Roughness").default_value
             alpha = roughness**2
@@ -282,17 +293,24 @@ def handle_special_cases(node, node_tag, texture_dir, export_settings):
                 node_tag = ET.Element("bsdf", type="mirror")
                 return node_tag
 
+            color = node.inputs.get("Color")
+            if color and len(color.links) == 0:
+                ET.SubElement(
+                    node_tag,
+                    "color",
+                    name="kd",
+                    value=convert_values(color.default_value, "color"),
+                )
+
             ET.SubElement(
                 node_tag, "float", name="alpha", value=convert_values(alpha, "float")
             )
-            ET.SubElement(node_tag, "color", name="kd", value="0,0,0")
             return node_tag
 
         case "TEX_IMAGE":
             img_path = export_texture(node, texture_dir, export_settings)
-            # You can use 'image_path' directly in the XML
-            # It's a relative path, so you can use it just like meshes
-            # E.g. "textures/___.png"
+            if img_path:
+                ET.SubElement(node_tag, "string", name="filename", value=img_path)
             return node_tag
 
         case _:

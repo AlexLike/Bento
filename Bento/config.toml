@@ -5,6 +5,7 @@ BSDF_GLASS = "bsdf"
 BSDF_PRINCIPLED = "bsdf"
 EMISSION = "emitter"
 TEX_CHECKER = "texture"
+TEX_IMAGE = "texture"
 
 [node_map]
 BSDF_DIFFUSE = "diffuse"
@@ -13,12 +14,14 @@ BSDF_GLASS = "dielectric"
 BSDF_PRINCIPLED = "disney"
 EMISSION = "area"
 TEX_CHECKER = "checkerboard_color"
+TEX_IMAGE = "imagetexture"
 
 [parameter_map]
 BSDF_DIFFUSE.Color = "albedo"
 BSDF_GLOSSY.Color = "kd"
 BSDF_GLOSSY.Roughness = "alpha"
 BSDF_GLASS.IOR = "intIOR"
+BSDF_PRINCIPLED."Base Color" = "baseColor"
 TEX_CHECKER.Color1 = "value1"
 TEX_CHECKER.Color2 = "value2"
 
