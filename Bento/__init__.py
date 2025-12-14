@@ -284,12 +284,12 @@ class EXPORT_OT_nori(bpy.types.Operator, ExportHelper):
                 )
                 continue
 
-            # Export as hair shape
+            # Export as curves shape
             if filepath is None:
                 print(f"Warning: Curve '{obj_name}' has no filepath")
                 continue
 
-            curve_xml = ET.SubElement(root, "mesh", type="hair")
+            curve_xml = ET.SubElement(root, "mesh", type="curves")
             ET.SubElement(
                 curve_xml, "string", name="filename", value=f"curves/{filepath}"
             )
