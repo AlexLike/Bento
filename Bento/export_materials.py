@@ -334,65 +334,109 @@ def handle_special_cases(node, node_tag, texture_dir, export_settings):
 
 def export_texture(node, texture_dir, export_settings):
     if not export_settings.export_textures:
-        return
+        return None
 
     img = node.image
 
     if not img:
-        return
+        print(f"Warning: Texture node has no image assigned. Skipping texture export.")
+        return None
 
     if not img.name:
         print(f"Warning: Texture node has no image name. Skipping export.")
         return None
 
+    # Ensure image is loaded into memory
     was_packed = img.packed_file is not None
-    if not was_packed:
-        img.pack()
 
-    # Check if the image has valid data
+    # For external images, we need to ensure pixel data is loaded
+    if not was_packed and not img.has_data:
+        # Try to reload the image
+        try:
+            img.reload()
+        except:
+            pass
+
+        # If still no data, try accessing pixels to force load
+        if not img.has_data:
+            try:
+                # Accessing pixels forces Blender to load the image
+                _ = img.pixels[0]
+            except:
+                pass
+
+    # Check if the image has valid data after load attempts
     if not img.has_data:
         print(
             f"Warning: Image '{img.name}' does not have any image data. Skipping export."
         )
-        if not was_packed:
-            img.unpack()
         return None
 
-    # Flip the image vertically to match Nori and PBRT v-coordinate convention
-    width, height = img.size
-    channels = img.channels
-    original_pixels = list(img.pixels)
-    flipped_pixels = []
-    for y in range(height):
-        src_y = height - 1 - y
-        for x in range(width):
-            src_index = (src_y * width + x) * channels
-            flipped_pixels.extend(original_pixels[src_index : src_index + channels])
-    img.pixels[:] = flipped_pixels
+    # Pack the image temporarily for export
+    if not was_packed:
+        try:
+            img.pack()
+        except RuntimeError as e:
+            print(
+                f"Warning: Failed to pack texture '{img.name}': {e}. Attempting direct export."
+            )
 
     img_name = os.path.splitext(img.name)[0]
     file_ext = export_settings.texture_format.lower()
     out_path = os.path.join(texture_dir, img_name + f".{file_ext}")
 
     original_format = img.file_format
-    img.file_format = export_settings.texture_format
+    original_pixels = None
 
     try:
-        # `save()` works for both packed and external images
+        # Flip the image vertically to match Nori and PBRT v-coordinate convention
+        width, height = img.size
+        channels = img.channels
+
+        # Check if pixel data is accessible
+        if width > 0 and height > 0 and len(img.pixels) > 0:
+            original_pixels = list(img.pixels)
+            flipped_pixels = []
+            for y in range(height):
+                src_y = height - 1 - y
+                for x in range(width):
+                    src_index = (src_y * width + x) * channels
+                    flipped_pixels.extend(
+                        original_pixels[src_index : src_index + channels]
+                    )
+            img.pixels[:] = flipped_pixels
+        else:
+            print(
+                f"Info: Image '{img.name}' has no accessible pixel data, exporting without flipping."
+            )
+
+        img.file_format = export_settings.texture_format
         img.save(filepath=out_path)
+        print(f"Successfully exported texture: {img.name}")
+
     except RuntimeError as e:
-        print(f"Warning: Failed to export texture '{img.name}': {e}")
+        print(f"Error: Failed to export texture '{img.name}': {e}")
+        if original_pixels:
+            img.pixels[:] = original_pixels
         img.file_format = original_format
-        img.pixels[:] = original_pixels
-        if not was_packed:
-            img.unpack()
+        if not was_packed and img.packed_file:
+            img.unpack(method="REMOVE")
+        return None
+    except Exception as e:
+        print(f"Error: Unexpected error exporting texture '{img.name}': {e}")
+        if original_pixels:
+            img.pixels[:] = original_pixels
+        img.file_format = original_format
+        if not was_packed and img.packed_file:
+            img.unpack(method="REMOVE")
         return None
     finally:
-        # --- Restore original format and pixels ---
+        # Restore original format and pixels
         img.file_format = original_format
-        img.pixels[:] = original_pixels
-        if not was_packed:
-            img.unpack()
+        if original_pixels:
+            img.pixels[:] = original_pixels
+        if not was_packed and img.packed_file:
+            img.unpack(method="REMOVE")
 
     return f"textures/{img_name}.{file_ext}"
 

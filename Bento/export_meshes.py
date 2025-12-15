@@ -103,31 +103,24 @@ def export_meshes(context, directory) -> List[
                     (obj_name, filepath, material, is_sphere_result, center, radius)
                 )
         else:
-            # Find the first non-None material and its index
-            first_mat = None
-            first_mat_index = None
-            for i, m in enumerate(materials):
-                if m is not None:
-                    first_mat = m
-                    first_mat_index = i
-                    break
-            if len([m for m in materials if m is not None]) > 1:
-                print(
-                    f"Warning: Object '{obj.name}' has multiple materials. Only exporting the first material '{first_mat.name}'."
-                )
-            mat = first_mat
-            mat_index = first_mat_index
-            if is_spherical:
-                mesh_data.append(
-                    (f"{obj.name}_{mat.name}", None, mat.name, True, center, radius)
-                )
-            else:
-                obj_name, filepath, material, is_sphere_result, center, radius = (
-                    export_material_submesh(mesh, obj.name, mat, mat_index, directory)
-                )
-                mesh_data.append(
-                    (obj_name, filepath, material, is_sphere_result, center, radius)
-                )
+            # Export each non-None material as a separate mesh
+            for mat_index, mat in enumerate(materials):
+                if mat is None:
+                    continue
+
+                if is_spherical:
+                    mesh_data.append(
+                        (f"{obj.name}_{mat.name}", None, mat.name, True, center, radius)
+                    )
+                else:
+                    obj_name, filepath, material, is_sphere_result, center, radius = (
+                        export_material_submesh(
+                            mesh, obj.name, mat, mat_index, directory
+                        )
+                    )
+                    mesh_data.append(
+                        (obj_name, filepath, material, is_sphere_result, center, radius)
+                    )
 
         eval_obj.to_mesh_clear()
         print(mesh_data)
