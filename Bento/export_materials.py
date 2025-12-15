@@ -345,22 +345,29 @@ def export_texture(node, texture_dir, export_settings):
         print(f"Warning: Texture node has no image name. Skipping export.")
         return None
 
+    was_packed = img.packed_file is not None
+    if not was_packed:
+        img.pack()
+
     # Check if the image has valid data
     if not img.has_data:
         print(
             f"Warning: Image '{img.name}' does not have any image data. Skipping export."
         )
+        if not was_packed:
+            img.unpack()
         return None
 
     # Flip the image vertically to match Nori and PBRT v-coordinate convention
     width, height = img.size
+    channels = img.channels
     original_pixels = list(img.pixels)
     flipped_pixels = []
     for y in range(height):
         src_y = height - 1 - y
         for x in range(width):
-            src_index = (src_y * width + x) * 4
-            flipped_pixels.extend(original_pixels[src_index : src_index + 4])
+            src_index = (src_y * width + x) * channels
+            flipped_pixels.extend(original_pixels[src_index : src_index + channels])
     img.pixels[:] = flipped_pixels
 
     img_name = os.path.splitext(img.name)[0]
@@ -376,13 +383,17 @@ def export_texture(node, texture_dir, export_settings):
     except RuntimeError as e:
         print(f"Warning: Failed to export texture '{img.name}': {e}")
         img.file_format = original_format
+        img.pixels[:] = original_pixels
+        if not was_packed:
+            img.unpack()
         return None
     finally:
         # --- Restore original format and pixels ---
         img.file_format = original_format
         img.pixels[:] = original_pixels
+        if not was_packed:
+            img.unpack()
 
-    print(f"Exported texture to: {out_path}")
     return f"textures/{img_name}.{file_ext}"
 
 
